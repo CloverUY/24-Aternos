@@ -2,96 +2,88 @@
 const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
-
 app.get('/', (req, res) => res.send('Bot is running!'));
 app.listen(PORT, () => console.log(`Web server running on port ${PORT}`));
 
 // ======= MINEFLAYER BOT SETUP =======
 const mineflayer = require('mineflayer');
-
+const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
+const Vec3 = require('vec3');
 console.log('Starting...');
 
 function createBot() {
   const bot = mineflayer.createBot({
     host: "Gabriela25615-qpMy.aternos.me",
-    port: 31387,               // Number type preferred here
+    port: 31387,
     username: "24ATERNOSBOT",
     version: false
   });
 
+  bot.loadPlugin(pathfinder);
+
+  bot.once('spawn', () => {
+    console.log('Spawned. Starting foolproof anti-AFK.');
+    const defaultMove = new Movements(bot);
+    bot.pathfinder.setMovements(defaultMove);
+    startAntiAFK(bot);
+  });
+
   bot.on('login', () => {
-    bot.chat('/reginster 123123123 123123123'); // Note: Check spelling — should this be /register?
+    bot.chat('/register 123123123 123123123');
     bot.chat('/login 123123123 123123123');
   });
 
-  bot.on('chat', (username, message) => {
-    if (username === bot.username) return;
-
-    switch (message) {
-      case ';start':
-        bot.chat('24 ATERNOS > Bot started! - Made By Fortcote');
-        bot.setControlState('forward', true);
-        bot.setControlState('jump', true);
-        bot.setControlState('sprint', true);
-        break;
-
-      case ';stop':
-        bot.chat('24 ATERNOS > Bot stopped! - Made By Fortcote');
-        bot.clearControlStates();
-        break;
-    }
-  });
-
-  bot.on('spawn', () => {
-    bot.chat('Bot > Spawned');
-    // Start the random movement loop
-    startRandomMovement(bot);
-  });
-
   bot.on('death', () => {
-    bot.chat('Bot > I died, respawn');
+    console.log("Bot died. Will respawn.");
   });
 
-  bot.on('kicked', (reason, loggedIn) => console.log('Kicked:', reason, loggedIn));
-  bot.on('error', err => console.log('Error:', err));
   bot.on('end', () => {
-    console.log('Bot disconnected. Reconnecting...');
-    setTimeout(createBot, 30000); // Reconnect after 30 seconds
+    console.log("Bot disconnected. Reconnecting in 30s.");
+    clearInterval(afkInterval);
+    setTimeout(createBot, 30000);
+  });
+
+  bot.on('kicked', reason => {
+    console.log("Kicked:", reason);
+  });
+
+  bot.on('error', err => {
+    console.error("Error:", err);
   });
 }
 
-// Function to control random movement, sprinting, and jumping
-function startRandomMovement(bot) {
-  function randomMovement() {
-    const moves = ['forward', 'back', 'left', 'right'];
-    const actions = [];
+let afkInterval = null;
 
-    bot.clearControlStates();
+function startAntiAFK(bot) {
+  afkInterval = setInterval(() => {
+    const dx = Math.floor(Math.random() * 10) - 5;
+    const dz = Math.floor(Math.random() * 10) - 5;
+    const pos = bot.entity.position.offset(dx, 0, dz);
+    bot.pathfinder.setGoal(new goals.GoalBlock(pos.x, pos.y, pos.z));
 
-    // Choose 1-3 random directions to walk
-    const walkCount = Math.floor(Math.random() * 3) + 1;
-    const chosenMoves = moves.sort(() => 0.5 - Math.random()).slice(0, walkCount);
-    chosenMoves.forEach(move => actions.push(move));
+    // Random look
+    bot.look(Math.random() * 2 * Math.PI, Math.random() * 0.5 - 0.25, true);
 
-    // 50% chance to sprint
-    if (Math.random() < 0.5) bot.setControlState('sprint', true);
-
-    // Set walking directions
-    actions.forEach(action => bot.setControlState(action, true));
-
-    // 30% chance to jump once
+    // Swing arm sometimes
     if (Math.random() < 0.3) {
-      bot.setControlState('jump', true);
-      setTimeout(() => bot.setControlState('jump', false), 500);
+      bot.swingArm();
     }
 
-    // Stop movement after 3-6 seconds randomly
-    setTimeout(() => bot.clearControlStates(), 3000 + Math.random() * 3000);
-  }
+    // Occasionally chat like a player
+    if (Math.random() < 0.1) {
+      const messages = [
+        "lol",
+        "bruh",
+        "this server cool",
+        "just chillin",
+        "anyone trading?",
+        "xD"
+      ];
+      const msg = messages[Math.floor(Math.random() * messages.length)];
+      bot.chat(msg);
+    }
 
-  // Run randomMovement every 10 seconds to keep bot active
-  randomMovement();
-  setInterval(randomMovement, 10000);
+  }, 15000); // Every 15 seconds
 }
 
 createBot();
