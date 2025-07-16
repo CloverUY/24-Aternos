@@ -15,7 +15,7 @@ function createBot() {
   const bot = mineflayer.createBot({
     host: "Gabriela25615-qpMy.aternos.me",
     port: "31387",
-    username: "24/7 Bot",
+    username: "24ATERNOSBOT",
     version: false
   });
 
@@ -58,7 +58,12 @@ function createBot() {
 
   bot.on('kicked', (reason, loggedIn) => console.log('Kicked:', reason));
   bot.on('error', err => console.log('Error:', err));
-  bot.on('end', createBot); // Auto-restart
+
+  // === Throttled reconnect protection ===
+  bot.on('end', () => {
+    console.log('Bot disconnected. Reconnecting in 30 seconds...');
+    setTimeout(createBot, 30000); // 30 sec delay before reconnect
+  });
 }
 
 createBot();
