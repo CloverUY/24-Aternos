@@ -15,13 +15,25 @@ function createBot() {
   const bot = mineflayer.createBot({
     host: "Gabriela25615-qpMy.aternos.me",
     port: "31387",
-    username: "24ATERNOSBOT",
+    username: "24/7 Bot",
     version: false
   });
 
-  bot.on('login', function () {
+  bot.on('login', () => {
     bot.chat('/reginster 123123123 123123123');
     bot.chat('/login 123123123 123123123');
+  });
+
+  bot.on('spawn', () => {
+    bot.chat('Bot > Spawned');
+
+    // === Anti-AFK Movement ===
+    setInterval(() => {
+      bot.setControlState('jump', true);
+      setTimeout(() => {
+        bot.setControlState('jump', false);
+      }, 500);
+    }, 10000); // jump every 10 seconds
   });
 
   bot.on('chat', (username, message) => {
@@ -40,17 +52,13 @@ function createBot() {
     }
   });
 
-  bot.on('spawn', function () {
-    bot.chat('Bot > Spawned');
-  });
-
-  bot.on('death', function () {
+  bot.on('death', () => {
     bot.chat('Bot > I died, respawn');
   });
 
-  bot.on('kicked', (reason, loggedIn) => console.log(reason, loggedIn));
-  bot.on('error', err => console.log(err));
-  bot.on('end', createBot);
+  bot.on('kicked', (reason, loggedIn) => console.log('Kicked:', reason));
+  bot.on('error', err => console.log('Error:', err));
+  bot.on('end', createBot); // Auto-restart
 }
 
 createBot();
