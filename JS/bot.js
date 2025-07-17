@@ -1,84 +1,92 @@
-const mineflayer = require('mineflayer');
+// Express server to keep Render awake
 const express = require('express');
-const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
 const app = express();
+const PORT = process.env.PORT || 3000;
+app.get('/', (_, res) => res.send('Bot is running!'));
+app.listen(PORT, () => console.log(`Web server on port ${PORT}`));
 
-// ✅ Web server for Render/UptimeRobot
-app.get('/', (req, res) => res.send('Bot is running.'));
-app.listen(10000, () => {
-  console.log('Web server on port 10000');
-});
+// Mineflayer bot setup
+const mineflayer = require('mineflayer');
+const {
+  pathfinder,
+  Movements,
+  goals: { GoalNear }
+} = require('mineflayer-pathfinder');
+const mcData = require('minecraft-data');
 
-// ✅ Configuration
-const BOT_USERNAME = 'YourBotUsername'; // Use a valid Minecraft username (non-premium works)
-const SERVER_HOST = 'yourserver.aternos.me'; // Replace with your Aternos IP
-const SERVER_PORT = 25565; // Aternos default
-const VERSION = false; // false = auto-detect version
-
+const server = {
+  host: 'Gabriela25615-qpMy.aternos.me',
+  port: 31387,
+  version: '1.21.7'
+};
+const BOT_USERNAME = 'Clown';
 let bot;
-let reconnectAttempts = 0;
 
-// ✅ Anti-AFK logic
-function startAntiAFK() {
-  let chatInterval = 1000 * 60 * 5; // 5 minutes
-  let moveInterval = 1000 * 30;     // every 30 seconds
-
-  setInterval(() => {
-    const msg = ["Still here!", "I'm not AFK!", "All good!", "Staying online!", "😉"][Math.floor(Math.random() * 5)];
-    bot.chat(msg);
-  }, chatInterval);
-
-  setInterval(() => {
-    const dx = Math.floor(Math.random() * 3) - 1;
-    const dz = Math.floor(Math.random() * 3) - 1;
-    const pos = bot.entity.position.offset(dx, 0, dz);
-    bot.lookAt(pos);
-    bot.setControlState('forward', true);
-    setTimeout(() => bot.setControlState('forward', false), 1000);
-  }, moveInterval);
-}
-
-// ✅ Bot creation logic
 function createBot() {
-  reconnectAttempts++;
-  console.log(`Creating bot (attempt ${reconnectAttempts})...`);
-
   bot = mineflayer.createBot({
-    host: SERVER_HOST,
-    port: SERVER_PORT,
+    host: server.host,
+    port: server.port,
     username: BOT_USERNAME,
-    version: VERSION,
+    version: server.version
   });
 
   bot.loadPlugin(pathfinder);
 
   bot.once('spawn', () => {
-    reconnectAttempts = 0;
-    console.log('✅ Bot spawned successfully!');
-    const mcData = require('minecraft-data')(bot.version);
-    const defaultMove = new Movements(bot, mcData);
-    bot.pathfinder.setMovements(defaultMove);
-    startAntiAFK();
+    console.log('Bot spawned successfully!');
+
+    const data = mcData(bot.version);
+    const movements = new Movements(bot, data);
+    bot.pathfinder.setMovements(movements);
+
+    wander();
+    activityLoop();
+    chatLoop();
   });
 
-  // Handle disconnection
   bot.on('end', () => {
-    console.log('⚠️ Disconnected — reconnecting in 5 seconds…');
-    setTimeout(createBot, 5000);
+    console.log('Disconnected — reconnecting in 100 ms…');
+    setTimeout(createBot, 100);
   });
 
-  // Handle login errors
-  bot.on('error', err => {
-    console.error('❌ Bot error:', err);
-    setTimeout(createBot, 5000);
-  });
-
-  // Handle kicks
+  bot.on('error', err => console.error('Bot error:', err));
   bot.on('kicked', reason => {
-    console.warn('⛔ Kicked from server:', reason);
-    setTimeout(createBot, 5000);
+    console.error('Kicked:', reason);
+    setTimeout(createBot, 100);
   });
 }
 
-// ✅ Start the bot
+function wander() {
+  if (!bot.entity) return;
+  const { x, y, z } = bot.entity.position;
+  const goal = new GoalNear(
+    x + (Math.random() * 10 - 5),
+    y,
+    z + (Math.random() * 10 - 5),
+    1
+  );
+  bot.pathfinder.setGoal(goal);
+
+  bot.once('goal_reached', () => setTimeout(wander, 1000));
+  bot.once('path_update', r => r.status === 'noPath' && setTimeout(wander, 1000));
+}
+
+function activityLoop() {
+  bot.setControlState('sprint', true);
+  setInterval(() => bot.setControlState('jump', true), 1000);
+}
+
+function chatLoop() {
+  const phrases = [
+    'Still here!', 'Anyone around?', 'Bot checking in...', 'Living the bot life!'
+  ];
+  setInterval(() => {
+    if (bot.entity) {
+      const msg = phrases[Math.floor(Math.random() * phrases.length)];
+      bot.chat(msg);
+      console.log('Sent chat:', msg);
+    }
+  }, 5 * 60 * 1000);
+}
+
 createBot();
