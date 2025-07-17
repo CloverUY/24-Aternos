@@ -1,8 +1,8 @@
 const mineflayer = require('mineflayer');
 
 const bot = mineflayer.createBot({
-  host: 'your-server.aternos.me', // replace with your server
-  port: 25565,
+  host: 'Gabriela25615-qpMy.aternos.me', // replace with your server
+  port: 31387,
   username: '24ATERNOSBOT', // use a unique name
 });
 

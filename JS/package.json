@@ -1,11 +1,12 @@
 {
-  "name": "24aternos",
+  "name": "aternos-anti-idle-bot",
   "version": "1.0.0",
+  "description": "24/7 Aternos anti-AFK bot using Mineflayer",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js"
   },
   "dependencies": {
-    "mineflayer": "^4.9.0"
+    "mineflayer": "^4.16.1"
   }
 }
