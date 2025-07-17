@@ -1,83 +1,79 @@
+// ======= EXPRESS SERVER FOR RENDER =======
+const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get('/', (req, res) => res.send('Bot is running!'));
+app.listen(PORT, () => console.log(`Web server running on port ${PORT}`));
+
+// ======= MINEFLAYER BOT SETUP =======
 const mineflayer = require('mineflayer');
-const http = require('http');
 
-// === ⛏️ Fill in your Aternos server details ===
-const HOST = 'your-server-name.aternos.me'; // e.g., 'gabriel.aternos.me'
-const PORT = 25565; // Usually 25565 unless Aternos gives something else
-const USERNAME = 'YourBotName'; // Use any unused name like 'NotAFKBot42'
+console.log('Starting bot...');
 
-// === 🛰️ Uptime Robot ping responder (for Render) ===
-http.createServer((req, res) => {
-  res.writeHead(200);
-  res.end('Bot is running.');
-}).listen(process.env.PORT || 3000);
-
-// === 🚀 Start the bot ===
 function createBot() {
   const bot = mineflayer.createBot({
-    host: HOST,
-    port: PORT,
-    username: USERNAME,
+    host: "Gabriela25615-qpMy.aternos.me", // Replace with your server address
+    port: 31387,                            // Use number, not string
+    username: "Clown",
+    version: false
   });
 
-  // === ✅ When bot joins the server
+  bot.on('login', () => {
+    console.log('Bot logged in');
+    // Example login commands, adjust if needed
+    bot.chat('/register 123123123 123123123');
+    bot.chat('/login 123123123 123123123');
+  });
+
   bot.on('spawn', () => {
-    console.log('✅ Bot joined and spawned.');
+    console.log('Bot spawned, starting movement');
+    bot.setControlState('forward', true);
+    bot.setControlState('jump', true);
+    bot.setControlState('sprint', true);
 
-    // Begin acting like a real player
-    simulateMovement(bot);
-    chatLoop(bot);
+    // Repeat jump every 1 second to simulate player jumping
+    setInterval(() => {
+      bot.setControlState('jump', true);
+      setTimeout(() => bot.setControlState('jump', false), 500);
+    }, 1000);
+
+    // Send chat message every 5 minutes to avoid idle kick
+    setInterval(() => {
+      bot.chat('I am still here!');
+    }, 5 * 60 * 1000);
   });
 
-  // === 🛑 Error handling and reconnect
+  bot.on('chat', (username, message) => {
+    if (username === bot.username) return;
+
+    if (message === ';start') {
+      bot.chat('Bot started! Sprinting and jumping now.');
+      bot.setControlState('forward', true);
+      bot.setControlState('jump', true);
+      bot.setControlState('sprint', true);
+    } else if (message === ';stop') {
+      bot.chat('Bot stopped.');
+      bot.clearControlStates();
+    }
+  });
+
+  bot.on('death', () => {
+    bot.chat('I died, respawning...');
+  });
+
+  bot.on('kicked', (reason) => {
+    console.log('Kicked:', reason);
+  });
+
   bot.on('error', (err) => {
-    console.error('❌ Bot error:', err);
+    console.log('Bot error:', err);
   });
 
   bot.on('end', () => {
-    console.log('⚠️ Disconnected. Reconnecting in 30 seconds...');
-    setTimeout(createBot, 30_000);
+    console.log('Bot disconnected, reconnecting in 30 seconds...');
+    setTimeout(createBot, 30000);
   });
 }
 
-// === 🤖 Simulate human-like movement
-function simulateMovement(bot) {
-  const directions = ['forward', 'back', 'left', 'right'];
-
-  setInterval(() => {
-    const dir = directions[Math.floor(Math.random() * directions.length)];
-    const yaw = Math.random() * Math.PI * 2;
-    const pitch = (Math.random() - 0.5) * 0.4;
-
-    bot.setControlState('sprint', true);
-    bot.setControlState('jump', true);
-    bot.setControlState(dir, true);
-    bot.look(yaw, pitch, true);
-
-    setTimeout(() => {
-      bot.setControlState('sprint', false);
-      bot.setControlState('jump', false);
-      bot.setControlState(dir, false);
-    }, 3000); // Move for 3 seconds
-  }, 10_000); // Every 10 seconds
-}
-
-// === 💬 Chat every 5 minutes
-function chatLoop(bot) {
-  const messages = [
-    "Just mining away! ⛏️",
-    "Haha not AFK!",
-    "Anyone need help? 😄",
-    "Still here, still active.",
-    "Love this server!",
-    "This bot never sleeps 😴🚫"
-  ];
-
-  setInterval(() => {
-    const msg = messages[Math.floor(Math.random() * messages.length)];
-    bot.chat(msg);
-  }, 5 * 60 * 1000); // Every 5 minutes
-}
-
-// 🚀 Launch it
 createBot();
