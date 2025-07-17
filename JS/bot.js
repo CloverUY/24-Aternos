@@ -13,9 +13,9 @@ let bot;
 
 function createBot() {
   bot = mineflayer.createBot({
-    host: 'Gabriela25615-qpMy.aternos.me',  // <-- Your server address here
-    port: 31387,                            // <-- Your server port here (number, no quotes)
-    username: 'Clown',               // <-- Your bot username
+    host: 'Gabriela25615-qpMy.aternos.me',  // Your server address
+    port: 31387,                             // Your server port (number)
+    username: '24ATERNOSBOT',                // Bot username
     version: false
   });
 
@@ -46,11 +46,9 @@ function startMoving() {
   setInterval(() => {
     if (!bot.entity) return;
 
-    // Check if stuck (position didn't change significantly)
     const dist = bot.entity.position.distanceTo(lastPosition);
     if (dist < 0.1) {
       stuckCounter++;
-      // Random turn
       const turnLeft = Math.random() < 0.5;
       bot.setControlState('left', turnLeft);
       bot.setControlState('right', !turnLeft);
@@ -104,13 +102,11 @@ function startRandomChat() {
 function startSprintAndJumpForever() {
   bot.setControlState('sprint', true);
 
-  // Jump continuously
   setInterval(() => {
     if (!bot.entity) return;
     bot.setControlState('jump', true);
   }, 1000);
 
-  // Also ensure jump is ON immediately
   bot.setControlState('jump', true);
 }
 
