@@ -9,6 +9,7 @@ app.listen(PORT, () => console.log(`Web server running on port ${PORT}`));
 // ===== MINEFLAYER & PATHFINDER SETUP =====
 const mineflayer = require('mineflayer');
 const { pathfinder, Movements, goals: { GoalNear } } = require('mineflayer-pathfinder');
+const minecraftData = require('minecraft-data');
 const Vec3 = require('vec3');
 
 let bot;
@@ -16,15 +17,15 @@ let bot;
 function createBot() {
   bot = mineflayer.createBot({
     host: 'Gabriela25615-qpMy.aternos.me',  // <-- Your server address here
-    port: 31387,                            // <-- Your server port here (number, no quotes)
-    username: '24ATERNOSBOT',               // <-- Your bot username
-    version: false                          // or specify version string like '1.21.4' if you want
+    port: 31387,                             // <-- Your server port here (number, no quotes)
+    username: '24ATERNOSBOT',                // <-- Your bot username
+    version: false
   });
 
   bot.loadPlugin(pathfinder);
 
   bot.once('spawn', () => {
-    const mcData = require('minecraft-data')(bot.version);
+    const mcData = minecraftData(bot.version);
     const defaultMove = new Movements(bot, mcData);
     bot.pathfinder.setMovements(defaultMove);
 
@@ -43,7 +44,7 @@ function createBot() {
   bot.on('kicked', reason => console.log('Bot kicked:', reason));
 }
 
-// --- Movement: Wander randomly within 10 blocks, change direction if stuck ---
+// --- Movement: Wander randomly within 20x20 area around current pos ---
 function startWandering() {
   function wander() {
     if (!bot.entity) return;
@@ -100,17 +101,17 @@ function startRandomChat() {
     if (!bot.entity) return;
     const msg = messages[Math.floor(Math.random() * messages.length)];
     bot.chat(msg);
-    setTimeout(sendChat, (5 + Math.random() * 5) * 60 * 1000); // 5 to 10 mins
+    setTimeout(sendChat, (5 + Math.random() * 5) * 60 * 1000);
   }
 
   sendChat();
 }
 
-// --- Sprint and jump FOREVER (no idle kicks) ---
+// --- Sprint and jump FOREVER (prevents idle kicks) ---
 function startSprintAndJumpForever() {
   bot.setControlState('sprint', true);
 
-  // Jump key ON continuously
+  // Jump key pressed continuously every second
   setInterval(() => {
     if (!bot.entity) return;
     bot.setControlState('jump', true);
