@@ -18,7 +18,7 @@ function createBot() {
     host: 'Gabriela25615-qpMy.aternos.me',  // <-- Your server address here
     port: 31387,                            // <-- Your server port here (number, no quotes)
     username: '24ATERNOSBOT',               // <-- Your bot username
-    version: false
+    version: false                          // or specify version string like '1.21.4' if you want
   });
 
   bot.loadPlugin(pathfinder);
@@ -100,7 +100,7 @@ function startRandomChat() {
     if (!bot.entity) return;
     const msg = messages[Math.floor(Math.random() * messages.length)];
     bot.chat(msg);
-    setTimeout(sendChat, (5 + Math.random() * 5) * 60 * 1000);
+    setTimeout(sendChat, (5 + Math.random() * 5) * 60 * 1000); // 5 to 10 mins
   }
 
   sendChat();
@@ -110,13 +110,13 @@ function startRandomChat() {
 function startSprintAndJumpForever() {
   bot.setControlState('sprint', true);
 
-  // Jump all the time (jump key pressed continuously)
+  // Jump key ON continuously
   setInterval(() => {
     if (!bot.entity) return;
     bot.setControlState('jump', true);
   }, 1000);
 
-  // Also make sure jump is ON immediately
+  // Make sure jump is ON immediately
   bot.setControlState('jump', true);
 }
 
