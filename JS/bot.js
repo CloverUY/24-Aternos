@@ -2,96 +2,70 @@ const mineflayer = require('mineflayer');
 const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
 const { Vec3 } = require('vec3');
 
-let bot;
+// === CONFIGURE YOUR SETTINGS ===
+const BOT_USERNAME = 'Clown'; // Change this to your bot's name
+const SERVER_HOST = 'Gabriela25615-qpMy.aternos.me'; // Your Aternos server address
+const SERVER_PORT = 31387; // Default Minecraft port
+const VERSION = '1.21.7'; // Match the version your Aternos server is using
 
 function createBot() {
-  bot = mineflayer.createBot({
-    host: 'yourserver.aternos.me', // <== Replace with your Aternos IP
-    port: 25565,
-    username: 'Clown',             // <== Any name not already in use
-    version: false,                // auto-detect server version
+  const bot = mineflayer.createBot({
+    host: SERVER_HOST,
+    port: SERVER_PORT,
+    username: BOT_USERNAME,
+    version: VERSION,
   });
 
   bot.loadPlugin(pathfinder);
 
-  bot.once('spawn', () => {
-    console.log('[✅] Bot spawned.');
-    const mcData = require('minecraft-data')(bot.version);
-    const movements = new Movements(bot, mcData);
-    bot.pathfinder.setMovements(movements);
+  bot.on('spawn', () => {
+    console.log('✅ Bot spawned and is alive!');
 
-    startMovementLoop();
-    startJumpLoop();
-    startChatLoop();
-    antiAfkTick();
+    const mcData = require('minecraft-data')(bot.version);
+    const defaultMove = new Movements(bot, mcData);
+    bot.pathfinder.setMovements(defaultMove);
+
+    // Wander around randomly to avoid idle
+    setInterval(() => {
+      const x = bot.entity.position.x + (Math.random() * 10 - 5);
+      const z = bot.entity.position.z + (Math.random() * 10 - 5);
+      const y = bot.entity.position.y;
+      const goal = new goals.GoalNear(Math.floor(x), Math.floor(y), Math.floor(z), 2);
+      bot.pathfinder.setGoal(goal, true);
+    }, 10000); // Every 10 seconds
+
+    // Jump occasionally
+    setInterval(() => {
+      if (bot.entity.onGround) {
+        bot.setControlState('jump', true);
+        setTimeout(() => bot.setControlState('jump', false), 500);
+      }
+    }, 5000);
+
+    // Say something every 4 minutes
+    setInterval(() => {
+      bot.chat('Still here!');
+    }, 240000);
+  });
+
+  bot.on('kicked', (reason, loggedIn) => {
+    console.log('❌ Bot kicked:', reason);
+    reconnect();
   });
 
   bot.on('end', () => {
-    console.log('[⚠️] Bot was kicked. Reconnecting in 5s...');
-    setTimeout(createBot, 5000);
+    console.log('🔁 Bot disconnected. Reconnecting...');
+    reconnect();
   });
 
-  bot.on('error', err => {
-    console.log('[❌] Error:', err.message);
+  bot.on('error', (err) => {
+    console.log('⚠️ Error:', err);
   });
 }
 
-// === Move around randomly ===
-function startMovementLoop() {
-  const directions = [
-    new Vec3(1, 0, 0),
-    new Vec3(-1, 0, 0),
-    new Vec3(0, 0, 1),
-    new Vec3(0, 0, -1),
-  ];
-
-  setInterval(() => {
-    if (!bot.entity) return;
-    const dir = directions[Math.floor(Math.random() * directions.length)];
-    const pos = bot.entity.position.offset(dir.x * 4, 0, dir.z * 4);
-    bot.pathfinder.setGoal(new goals.GoalBlock(pos.x, pos.y, pos.z));
-  }, 8000 + Math.random() * 4000);
-}
-
-// === Random jumping every few seconds ===
-function startJumpLoop() {
-  setInterval(() => {
-    bot.setControlState('jump', true);
-    setTimeout(() => bot.setControlState('jump', false), 500);
-  }, 6000 + Math.random() * 4000);
-}
-
-// === Periodic random messages ===
-function startChatLoop() {
-  const messages = [
-    'I love Minecraft!',
-    'Still here 😎',
-    'Who wants to trade?',
-    'Farming some blocks...',
-    'Haha!',
-  ];
-
-  setInterval(() => {
-    const msg = messages[Math.floor(Math.random() * messages.length)];
-    bot.chat(msg);
-  }, 4 * 60 * 1000); // Every 4 minutes
-}
-
-// === Raw packet spam (anti-kick failsafe) ===
-function antiAfkTick() {
-  setInterval(() => {
-    if (!bot._client || !bot.entity) return;
-
-    const pos = bot.entity.position;
-    bot._client.write('position', {
-      x: pos.x,
-      y: pos.y,
-      z: pos.z,
-      yaw: bot.entity.yaw,
-      pitch: bot.entity.pitch,
-      onGround: true,
-    });
-  }, 15000); // Send every 15s
+// 🔁 Reconnect after 100ms
+function reconnect() {
+  setTimeout(createBot, 100);
 }
 
 createBot();
