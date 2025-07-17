@@ -1,51 +1,58 @@
-// ===== EXPRESS SERVER FOR RENDER =====
-const express = require('express');
-const app = express();
-const PORT = process.env.PORT || 10000;
-
-app.get('/', (req, res) => res.send('Bot is running!'));
-app.listen(PORT, () => console.log(`Web server running on port ${PORT}`));
-
-// ===== MINEFLAYER BOT SETUP =====
 const mineflayer = require('mineflayer');
+const http = require('http'); // Prevent Render port timeout
 
-console.log('Starting...');
+// Prevent Render port timeout
+http.createServer((_, res) => res.end("Bot running")).listen(process.env.PORT || 3000);
+
+let bot;
 
 function createBot() {
-  const bot = mineflayer.createBot({
-    host: "Gabriela25615-qpMy.aternos.me", // your Aternos host
-    port: 31387, // your Aternos port
-    username: "24ATERNOSBOT",
+  bot = mineflayer.createBot({
+    host: 'yourserver.aternos.me', // Replace with your Aternos server
+    port: 25565,
+    username: '24ATERNOSBOT', // Use a Minecraft account
     version: false
   });
 
-  bot.once('spawn', () => {
-    bot.chat('Bot > Spawned and walking forward!');
-    bot.setControlState('forward', true);
-    bot.setControlState('jump', true); // Optional: jump to simulate activity
-  });
-
   bot.on('login', () => {
-    bot.chat('/register 123123123 123123123');
-    bot.chat('/login 123123123');
-  });
+    console.log("✅ Bot logged in!");
 
-  bot.on('death', () => {
-    console.log('Bot died, waiting to respawn.');
-  });
-
-  bot.on('kicked', (reason) => {
-    console.log('Kicked:', reason);
-  });
-
-  bot.on('error', (err) => {
-    console.log('Error:', err);
+    // Simulate real player movement
+    startMovementLoop();
   });
 
   bot.on('end', () => {
-    console.log('Bot disconnected. Reconnecting in 30 seconds...');
+    console.log("⚠️ Disconnected. Reconnecting in 30 seconds...");
     setTimeout(createBot, 30000);
   });
+
+  bot.on('error', err => {
+    console.log("❌ Error:", err.message);
+  });
+}
+
+// Move + Jump + Sprint Randomly
+function startMovementLoop() {
+  const directions = ['forward', 'back', 'left', 'right'];
+
+  setInterval(() => {
+    // Pick a random direction
+    const dir = directions[Math.floor(Math.random() * directions.length)];
+
+    // Start moving, sprinting, and jumping
+    bot.setControlState('sprint', true);
+    bot.setControlState(dir, true);
+    bot.setControlState('jump', true);
+
+    // Random movement time
+    const moveTime = 1000 + Math.random() * 2000;
+
+    setTimeout(() => {
+      bot.setControlState(dir, false);
+      bot.setControlState('jump', false);
+      bot.setControlState('sprint', false);
+    }, moveTime);
+  }, 4000); // Loop every few seconds
 }
 
 createBot();

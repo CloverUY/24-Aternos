@@ -1,12 +1,11 @@
 {
   "name": "24aternos",
-  "version": "2.0.0",
+  "version": "1.0.0",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
     "mineflayer": "^4.9.0"
   }
 }
