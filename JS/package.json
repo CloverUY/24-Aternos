@@ -7,8 +7,8 @@
   },
   "dependencies": {
     "express": "^4.18.2",
-    "mineflayer": "^5.1.0",
-    "mineflayer-pathfinder": "^2.4.2",
-    "minecraft-data": "^2.77.0"
+    "mineflayer": "4.2.1",
+    "mineflayer-pathfinder": "1.5.0",
+    "minecraft-data": "2.52.0"
   }
 }
