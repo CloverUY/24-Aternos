@@ -6,30 +6,22 @@ const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('Bot is running!'));
 app.listen(PORT, () => console.log(`Web server running on port ${PORT}`));
 
-// ===== MINEFLAYER & PATHFINDER SETUP =====
+// ===== MINEFLAYER BOT SETUP =====
 const mineflayer = require('mineflayer');
-const { pathfinder, Movements, goals: { GoalNear } } = require('mineflayer-pathfinder');
-const minecraftData = require('minecraft-data');
-const Vec3 = require('vec3');
 
 let bot;
 
 function createBot() {
   bot = mineflayer.createBot({
     host: 'Gabriela25615-qpMy.aternos.me',  // <-- Your server address here
-    port: 31387,                             // <-- Your server port here (number, no quotes)
-    username: '24ATERNOSBOT',                // <-- Your bot username
+    port: 31387,                            // <-- Your server port here (number, no quotes)
+    username: 'Clown',               // <-- Your bot username
     version: false
   });
 
-  bot.loadPlugin(pathfinder);
-
   bot.once('spawn', () => {
-    const mcData = minecraftData(bot.version);
-    const defaultMove = new Movements(bot, mcData);
-    bot.pathfinder.setMovements(defaultMove);
-
-    startWandering();
+    console.log('Bot spawned, starting actions...');
+    startMoving();
     startRandomLook();
     startRandomChat();
     startSprintAndJumpForever();
@@ -44,34 +36,35 @@ function createBot() {
   bot.on('kicked', reason => console.log('Bot kicked:', reason));
 }
 
-// --- Movement: Wander randomly within 20x20 area around current pos ---
-function startWandering() {
-  function wander() {
+// --- Moves forward forever, turns randomly if stuck ---
+function startMoving() {
+  bot.setControlState('forward', true);
+
+  let stuckCounter = 0;
+  let lastPosition = bot.entity.position.clone();
+
+  setInterval(() => {
     if (!bot.entity) return;
 
-    const x = bot.entity.position.x + (Math.random() * 20 - 10);
-    const y = bot.entity.position.y;
-    const z = bot.entity.position.z + (Math.random() * 20 - 10);
-
-    const goal = new GoalNear(x, y, z, 1);
-    bot.pathfinder.setGoal(goal);
-
-    function onGoalReached() {
-      bot.removeListener('goal_reached', onGoalReached);
-      setTimeout(wander, 1000 + Math.random() * 2000);
+    // Check if stuck (position didn't change significantly)
+    const dist = bot.entity.position.distanceTo(lastPosition);
+    if (dist < 0.1) {
+      stuckCounter++;
+      // Random turn
+      const turnLeft = Math.random() < 0.5;
+      bot.setControlState('left', turnLeft);
+      bot.setControlState('right', !turnLeft);
+      setTimeout(() => {
+        bot.setControlState('left', false);
+        bot.setControlState('right', false);
+      }, 1000);
+    } else {
+      stuckCounter = 0;
+      bot.setControlState('left', false);
+      bot.setControlState('right', false);
     }
-    bot.on('goal_reached', onGoalReached);
-
-    function onPathUpdate(r) {
-      if (r.status === 'noPath') {
-        bot.pathfinder.setGoal(null);
-        setTimeout(wander, 1000);
-      }
-    }
-    bot.once('path_update', onPathUpdate);
-  }
-
-  wander();
+    lastPosition = bot.entity.position.clone();
+  }, 2000);
 }
 
 // --- Randomly look around every 5 seconds ---
@@ -84,7 +77,7 @@ function startRandomLook() {
   }, 5000);
 }
 
-// --- Chat randomly every 5-10 minutes to simulate player ---
+// --- Chat randomly every 5-10 minutes ---
 function startRandomChat() {
   const messages = [
     "Hey everyone!",
@@ -107,17 +100,17 @@ function startRandomChat() {
   sendChat();
 }
 
-// --- Sprint and jump FOREVER (prevents idle kicks) ---
+// --- Sprint and jump forever ---
 function startSprintAndJumpForever() {
   bot.setControlState('sprint', true);
 
-  // Jump key pressed continuously every second
+  // Jump continuously
   setInterval(() => {
     if (!bot.entity) return;
     bot.setControlState('jump', true);
   }, 1000);
 
-  // Make sure jump is ON immediately
+  // Also ensure jump is ON immediately
   bot.setControlState('jump', true);
 }
 

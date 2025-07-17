@@ -5,11 +5,11 @@
   "scripts": {
     "start": "node bot.js"
   },
+  "author": "Fortcote",
+  "license": "ISC",
   "dependencies": {
     "express": "^4.18.2",
     "mineflayer": "^4.9.0",
-    "mineflayer-pathfinder": "^1.3.0",
-    "vec3": "^1.1.0",
-    "minecraft-data": "^2.14.0"
+    "vec3": "^1.0.0"
   }
 }
