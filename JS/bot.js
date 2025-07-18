@@ -1,33 +1,31 @@
-// Express server to keep Render awake
+// ===== EXPRESS SERVER (Render compatibility) =====
 const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
-app.get('/', (_, res) => res.send('Bot is running!'));
-app.listen(PORT, () => console.log(`Web server on port ${PORT}`));
 
-// Mineflayer bot setup
+app.get('/', (req, res) => res.send('Bot is running!'));
+app.listen(PORT, () => console.log(`Web server running on port ${PORT}`));
+
+// ===== MINEFLAYER BOT SETUP =====
 const mineflayer = require('mineflayer');
-const {
-  pathfinder,
-  Movements,
-  goals: { GoalNear }
-} = require('mineflayer-pathfinder');
+const { pathfinder, Movements, goals: { GoalNear } } = require('mineflayer-pathfinder');
 const mcData = require('minecraft-data');
 
-const server = {
+const SERVER = {
   host: 'Gabriela25615-qpMy.aternos.me',
   port: 31387,
   version: '1.21.7'
 };
 const BOT_USERNAME = 'Clown';
+
 let bot;
 
 function createBot() {
   bot = mineflayer.createBot({
-    host: server.host,
-    port: server.port,
+    host: SERVER.host,
+    port: SERVER.port,
     username: BOT_USERNAME,
-    version: server.version
+    version: SERVER.version
   });
 
   bot.loadPlugin(pathfinder);
@@ -40,19 +38,22 @@ function createBot() {
     bot.pathfinder.setMovements(movements);
 
     wander();
-    activityLoop();
+    keepActive();
     chatLoop();
   });
 
   bot.on('end', () => {
-    console.log('Disconnected — reconnecting in 100 ms…');
-    setTimeout(createBot, 100);
+    console.log('Bot disconnected — reconnecting in 10 seconds...');
+    setTimeout(createBot, 10000);
   });
 
-  bot.on('error', err => console.error('Bot error:', err));
+  bot.on('error', err => {
+    console.error('Bot error:', err);
+  });
+
   bot.on('kicked', reason => {
-    console.error('Kicked:', reason);
-    setTimeout(createBot, 100);
+    console.error('Bot kicked:', reason);
+    setTimeout(createBot, 10000);
   });
 }
 
@@ -68,25 +69,29 @@ function wander() {
   bot.pathfinder.setGoal(goal);
 
   bot.once('goal_reached', () => setTimeout(wander, 1000));
-  bot.once('path_update', r => r.status === 'noPath' && setTimeout(wander, 1000));
+  bot.once('path_update', result => {
+    if (result.status === 'noPath') setTimeout(wander, 1000);
+  });
 }
 
-function activityLoop() {
+function keepActive() {
   bot.setControlState('sprint', true);
-  setInterval(() => bot.setControlState('jump', true), 1000);
+  setInterval(() => {
+    if (bot.entity) bot.setControlState('jump', true);
+  }, 1000);
 }
 
 function chatLoop() {
-  const phrases = [
-    'Still here!', 'Anyone around?', 'Bot checking in...', 'Living the bot life!'
+  const messages = [
+    "Still here!", "Anyone around?", "Bot checking in...", "Living the bot life!"
   ];
   setInterval(() => {
     if (bot.entity) {
-      const msg = phrases[Math.floor(Math.random() * phrases.length)];
+      const msg = messages[Math.floor(Math.random() * messages.length)];
       bot.chat(msg);
-      console.log('Sent chat:', msg);
+      console.log('Sent chat message:', msg);
     }
-  }, 5 * 60 * 1000);
+  }, 5 * 60 * 1000); // every 5 minutes
 }
 
 createBot();
