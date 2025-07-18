@@ -6,6 +6,6 @@
     "start": "node bot.js"
   },
   "dependencies": {
-    "mineflayer": "^5.1.0"
+    "mineflayer": "^4.30.0"
   }
 }
