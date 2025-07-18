@@ -1,14 +1,11 @@
 {
-  "name": "mineflayer-bot-1217",
+  "name": "aternos-anti-afk-bot",
   "version": "1.0.0",
-  "description": "24/7 Aternos Anti-AFK Bot for Minecraft 1.21.7",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js"
   },
   "dependencies": {
-    "mineflayer": "^4.23.0",
-    "mineflayer-pathfinder": "^2.3.1",
-    "minecraft-data": "^3.33.0"
+    "mineflayer": "^5.1.0"
   }
 }
