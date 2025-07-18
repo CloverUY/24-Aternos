@@ -5,24 +5,36 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+let bot;
+let reconnectTimeout = null;
+let currentActivity = 'Starting...';
+let activityTimeout = null;
+let connectionAttempts = 0;
+let lastConnectTime = Date.now();
+let isReconnecting = false;
+
 app.get('/', (req, res) => {
   res.send(`
     <h1>🤖 Minecraft AFK Bot Status</h1>
-    <p><strong>Bot Status:</strong> ${bot ? 'Online' : 'Offline'}</p>
+    <p><strong>Bot Status:</strong> ${bot && bot.entity ? 'Online & Spawned' : 'Offline'}</p>
     <p><strong>Server:</strong> ${config.host}:${config.port}</p>
     <p><strong>Username:</strong> ${config.username}</p>
-    <p><strong>Current Activity:</strong> ${currentActivity || 'Starting...'}</p>
+    <p><strong>Current Activity:</strong> ${currentActivity}</p>
+    <p><strong>Connection Attempts:</strong> ${connectionAttempts}</p>
     <p><strong>Uptime:</strong> ${Math.floor(process.uptime())} seconds</p>
+    <p><strong>Last Connect:</strong> ${new Date(lastConnectTime).toLocaleTimeString()}</p>
   `);
 });
 
 app.get('/status', (req, res) => {
   res.json({
-    botOnline: bot ? true : false,
+    botOnline: bot && bot.entity ? true : false,
     server: `${config.host}:${config.port}`,
     username: config.username,
-    currentActivity: currentActivity || 'Starting...',
-    uptime: Math.floor(process.uptime())
+    currentActivity: currentActivity,
+    connectionAttempts: connectionAttempts,
+    uptime: Math.floor(process.uptime()),
+    lastConnectTime: lastConnectTime
   });
 });
 
@@ -30,374 +42,374 @@ app.listen(PORT, () => {
   console.log(`🌐 Web server running on port ${PORT}`);
 });
 
-let bot;
-let reconnectTimeout = null;
-let currentActivity = null;
-let activityTimeout = null;
-
-// === BOT SETTINGS ===
+// === IMPROVED BOT SETTINGS ===
 const config = {
   host: "Gabriela25615-qpMy.aternos.me",
   port: 31387,
   username: "AFK_Bot",
-  version: "1.21.7"
+  version: "1.21.7",
+  // Add connection stability options
+  hideErrors: false,
+  keepAlive: true,
+  checkTimeoutInterval: 30000, // 30 seconds
+  auth: 'offline' // For cracked servers
 };
 
-// === REALISTIC PLAYER BEHAVIORS ===
+// === REALISTIC BEHAVIORS (LESS INTENSIVE) ===
 const activities = [
-  'explore',
-  'idle',
-  'jump_around',
-  'sprint_walk',
+  'explore_slow',
+  'idle_long',
   'look_around',
-  'dig_random',
-  'build_simple'
+  'small_movements',
+  'pause'
 ];
 
 const chatMessages = [
-  "Anyone online?",
-  "Nice day today",
-  "Building something cool",
-  "Just exploring",
-  "Hey everyone!",
-  "How's it going?",
-  "Love this server",
-  "What's everyone up to?",
-  "Beautiful landscape here",
-  "Anyone want to team up?"
+  "hey",
+  "anyone online?",
+  "nice server",
+  "hello",
+  "how's everyone doing?",
+  "good to be here",
+  "love this place"
 ];
 
+let movementInterval = null;
+let lookInterval = null;
+let chatInterval = null;
+
 function createBot() {
-  bot = mineflayer.createBot(config);
-
-  bot.once('spawn', () => {
-    console.log("✅ Bot spawned successfully!");
+  if (isReconnecting) return;
+  
+  connectionAttempts++;
+  isReconnecting = true;
+  
+  console.log(`🔄 Connection attempt #${connectionAttempts}`);
+  
+  try {
+    bot = mineflayer.createBot(config);
     
-    // Start realistic player behavior
-    startRealisticBehavior();
+    // === CONNECTION EVENTS ===
+    bot.on('login', () => {
+      console.log('📝 Logged in successfully');
+      lastConnectTime = Date.now();
+    });
     
-    // Random chat messages (less frequent, more natural)
-    setInterval(() => {
-      if (Math.random() < 0.15) { // 15% chance every 3-8 minutes
-        const message = chatMessages[Math.floor(Math.random() * chatMessages.length)];
-        bot.chat(message);
-      }
-    }, (Math.random() * 5 + 3) * 60 * 1000); // 3-8 minutes
-  });
-
-  // === ERROR HANDLING ===
-  bot.on('error', (err) => {
-    console.error("❌ Bot error:", err);
-    reconnect();
-  });
-
-  bot.on('end', () => {
-    console.warn("🔁 Bot disconnected — reconnecting in 10 seconds...");
-    reconnect();
-  });
-
-  // === RESPOND TO CHAT (MORE REALISTIC) ===
-  bot.on('chat', (username, message) => {
-    if (username === bot.username) return;
-    
-    // Random chance to respond to chat
-    if (Math.random() < 0.3) {
+    bot.once('spawn', () => {
+      console.log("✅ Bot spawned successfully!");
+      isReconnecting = false;
+      
+      // Wait a bit before starting activities
       setTimeout(() => {
-        const responses = [
-          "Hey there!",
-          "What's up?",
-          "Nice!",
-          "Cool!",
-          "Agreed",
-          "Sounds good",
-          "I'm just exploring",
-          "Same here"
-        ];
-        const response = responses[Math.floor(Math.random() * responses.length)];
-        bot.chat(response);
-      }, Math.random() * 3000 + 1000); // 1-4 second delay
-    }
-  });
+        startImprovedBehavior();
+      }, 3000);
+    });
+    
+    // === BETTER ERROR HANDLING ===
+    bot.on('error', (err) => {
+      console.error(`❌ Bot error: ${err.message}`);
+      
+      // Don't spam reconnects for certain errors
+      if (err.message.includes('EPIPE') || err.message.includes('ECONNRESET')) {
+        console.log('🔌 Connection lost, will reconnect...');
+      }
+      
+      cleanupAndReconnect();
+    });
+    
+    bot.on('end', (reason) => {
+      console.warn(`🔁 Bot disconnected (${reason || 'unknown'}) — reconnecting...`);
+      cleanupAndReconnect();
+    });
+    
+    bot.on('kicked', (reason) => {
+      console.warn(`⚠️ Bot was kicked: ${reason}`);
+      cleanupAndReconnect();
+    });
+    
+    // === HEALTH CHECK ===
+    bot.on('health', () => {
+      if (bot.health <= 0) {
+        console.log('💀 Bot died, respawning...');
+        setTimeout(() => bot.respawn(), 2000);
+      }
+    });
+    
+    // === SIMPLE CHAT RESPONSES ===
+    bot.on('chat', (username, message) => {
+      if (username === bot.username) return;
+      
+      // Less frequent responses to avoid spam
+      if (Math.random() < 0.2) {
+        setTimeout(() => {
+          const responses = ["hey", "hi", "hello", "sup", "nice", "cool"];
+          const response = responses[Math.floor(Math.random() * responses.length)];
+          safeChat(response);
+        }, Math.random() * 4000 + 2000); // 2-6 second delay
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Failed to create bot:', error);
+    cleanupAndReconnect();
+  }
 }
 
-function startRealisticBehavior() {
-  // Main activity loop - changes activity every 30 seconds to 3 minutes
+function startImprovedBehavior() {
+  if (!bot || !bot.entity) return;
+  
+  console.log('🎮 Starting improved behaviors...');
+  
+  // Main activity loop - less frequent changes
   function changeActivity() {
     if (!bot || !bot.entity) return;
     
-    // Stop current activity
     stopAllMovement();
-    
-    // Pick new random activity
     currentActivity = activities[Math.floor(Math.random() * activities.length)];
-    console.log(`🎯 Starting activity: ${currentActivity}`);
+    console.log(`🎯 Activity: ${currentActivity}`);
     
-    // Execute the activity
-    executeActivity(currentActivity);
+    executeImprovedActivity(currentActivity);
     
-    // Schedule next activity change
-    const nextChange = Math.random() * 150000 + 30000; // 30 seconds to 3 minutes
-    activityTimeout = setTimeout(changeActivity, nextChange);
+    // Change activity every 1-4 minutes
+    activityTimeout = setTimeout(changeActivity, Math.random() * 180000 + 60000);
   }
   
-  // Start the activity cycle
-  changeActivity();
-  
-  // Subtle movements every 10-20 seconds to prevent AFK detection
-  setInterval(() => {
+  // Anti-AFK movements (very subtle)
+  movementInterval = setInterval(() => {
     if (!bot || !bot.entity) return;
     
-    // Random small movements
-    if (Math.random() < 0.7) {
-      const smallYaw = (Math.random() - 0.5) * 0.5;
-      const smallPitch = (Math.random() - 0.5) * 0.3;
-      bot.look(bot.entity.yaw + smallYaw, bot.entity.pitch + smallPitch, true);
+    // Tiny mouse movements
+    if (Math.random() < 0.8) {
+      const currentYaw = bot.entity.yaw;
+      const currentPitch = bot.entity.pitch;
+      const smallYaw = currentYaw + (Math.random() - 0.5) * 0.2;
+      const smallPitch = currentPitch + (Math.random() - 0.5) * 0.1;
+      
+      try {
+        bot.look(smallYaw, smallPitch, true);
+      } catch (e) {
+        // Ignore look errors
+      }
     }
+  }, Math.random() * 15000 + 15000); // 15-30 seconds
+  
+  // Occasional chat (very rare)
+  chatInterval = setInterval(() => {
+    if (!bot || !bot.entity) return;
     
-    // Random mouse movement simulation
-    if (Math.random() < 0.3) {
-      bot.activateItem(); // Right click
+    if (Math.random() < 0.1) { // 10% chance
+      const message = chatMessages[Math.floor(Math.random() * chatMessages.length)];
+      safeChat(message);
     }
-  }, Math.random() * 10000 + 10000); // 10-20 seconds
+  }, Math.random() * 300000 + 300000); // 5-10 minutes
+  
+  changeActivity();
 }
 
-function executeActivity(activity) {
+function executeImprovedActivity(activity) {
   if (!bot || !bot.entity) return;
   
   switch (activity) {
-    case 'explore':
-      exploreMovement();
+    case 'explore_slow':
+      exploreSlowly();
       break;
-    case 'idle':
-      idleBehavior();
-      break;
-    case 'jump_around':
-      jumpAroundBehavior();
-      break;
-    case 'sprint_walk':
-      sprintWalkBehavior();
+    case 'idle_long':
+      idleLonger();
       break;
     case 'look_around':
-      lookAroundBehavior();
+      lookAroundSlowly();
       break;
-    case 'dig_random':
-      digRandomBehavior();
+    case 'small_movements':
+      smallMovements();
       break;
-    case 'build_simple':
-      buildSimpleBehavior();
+    case 'pause':
+      pauseActivity();
       break;
   }
 }
 
-function exploreMovement() {
+function exploreSlowly() {
   if (!bot || !bot.entity) return;
   
-  const duration = Math.random() * 20000 + 10000; // 10-30 seconds
+  let moveCount = 0;
+  const maxMoves = Math.floor(Math.random() * 5) + 3; // 3-8 moves
+  
   const interval = setInterval(() => {
-    if (!bot || !bot.entity) return;
+    if (!bot || !bot.entity || moveCount >= maxMoves) {
+      clearInterval(interval);
+      stopAllMovement();
+      return;
+    }
     
     // Random direction
     const yaw = Math.random() * Math.PI * 2;
-    bot.look(yaw, 0, true);
-    
-    // Walk forward with occasional sprinting
-    bot.setControlState('forward', true);
-    if (Math.random() < 0.4) {
-      bot.setControlState('sprint', true);
-    }
-    
-    // Random jumping while walking
-    if (Math.random() < 0.3) {
-      bot.setControlState('jump', true);
-      setTimeout(() => bot.setControlState('jump', false), 300);
-    }
-    
-    // Change direction every 2-5 seconds
-    setTimeout(() => {
-      if (Math.random() < 0.5) {
-        bot.setControlState('forward', false);
-        bot.setControlState('sprint', false);
-      }
-    }, Math.random() * 3000 + 2000);
-    
-  }, Math.random() * 3000 + 2000);
-  
-  setTimeout(() => {
-    clearInterval(interval);
-    stopAllMovement();
-  }, duration);
-}
-
-function idleBehavior() {
-  if (!bot || !bot.entity) return;
-  
-  // Just look around slowly
-  const interval = setInterval(() => {
-    if (!bot || !bot.entity) return;
-    
-    const yaw = bot.entity.yaw + (Math.random() - 0.5) * 0.8;
-    const pitch = (Math.random() - 0.5) * 0.6;
-    bot.look(yaw, pitch, true);
-    
-    // Occasional small movements
-    if (Math.random() < 0.2) {
+    try {
+      bot.look(yaw, 0, true);
+      
+      // Walk forward for 2-4 seconds
       bot.setControlState('forward', true);
-      setTimeout(() => bot.setControlState('forward', false), 1000);
+      
+      setTimeout(() => {
+        if (bot) {
+          bot.setControlState('forward', false);
+          // Small pause between moves
+          setTimeout(() => {
+            moveCount++;
+          }, Math.random() * 2000 + 1000);
+        }
+      }, Math.random() * 2000 + 2000);
+      
+    } catch (e) {
+      clearInterval(interval);
+      stopAllMovement();
+    }
+  }, Math.random() * 4000 + 3000);
+}
+
+function idleLonger() {
+  // Just look around very slowly
+  let lookCount = 0;
+  const maxLooks = Math.floor(Math.random() * 3) + 2;
+  
+  const interval = setInterval(() => {
+    if (!bot || !bot.entity || lookCount >= maxLooks) {
+      clearInterval(interval);
+      return;
+    }
+    
+    try {
+      const yaw = bot.entity.yaw + (Math.random() - 0.5) * 0.5;
+      const pitch = (Math.random() - 0.5) * 0.3;
+      bot.look(yaw, pitch, true);
+      lookCount++;
+    } catch (e) {
+      clearInterval(interval);
+    }
+  }, Math.random() * 5000 + 3000);
+}
+
+function lookAroundSlowly() {
+  if (!bot || !bot.entity) return;
+  
+  let lookCount = 0;
+  const maxLooks = Math.floor(Math.random() * 4) + 2;
+  
+  const interval = setInterval(() => {
+    if (!bot || !bot.entity || lookCount >= maxLooks) {
+      clearInterval(interval);
+      return;
+    }
+    
+    try {
+      const yaw = Math.random() * Math.PI * 2;
+      const pitch = (Math.random() - 0.5) * 0.8;
+      bot.look(yaw, pitch, true);
+      lookCount++;
+    } catch (e) {
+      clearInterval(interval);
     }
   }, Math.random() * 3000 + 2000);
-  
-  setTimeout(() => clearInterval(interval), Math.random() * 15000 + 10000);
 }
 
-function jumpAroundBehavior() {
+function smallMovements() {
   if (!bot || !bot.entity) return;
   
+  // Just a few small steps
+  let stepCount = 0;
+  const maxSteps = Math.floor(Math.random() * 3) + 1;
+  
   const interval = setInterval(() => {
-    if (!bot || !bot.entity) return;
-    
-    // Random direction
-    const yaw = Math.random() * Math.PI * 2;
-    bot.look(yaw, 0, true);
-    
-    // Jump and move
-    bot.setControlState('jump', true);
-    bot.setControlState('forward', true);
-    
-    setTimeout(() => {
-      bot.setControlState('jump', false);
-      bot.setControlState('forward', false);
-    }, 800);
-    
-  }, Math.random() * 2000 + 1000);
-  
-  setTimeout(() => {
-    clearInterval(interval);
-    stopAllMovement();
-  }, Math.random() * 10000 + 5000);
-}
-
-function sprintWalkBehavior() {
-  if (!bot || !bot.entity) return;
-  
-  const yaw = Math.random() * Math.PI * 2;
-  bot.look(yaw, 0, true);
-  
-  bot.setControlState('forward', true);
-  bot.setControlState('sprint', true);
-  
-  // Change direction occasionally
-  const interval = setInterval(() => {
-    if (!bot || !bot.entity) return;
-    
-    const newYaw = bot.entity.yaw + (Math.random() - 0.5) * 1.5;
-    bot.look(newYaw, 0, true);
-    
-    // Random jump while sprinting
-    if (Math.random() < 0.4) {
-      bot.setControlState('jump', true);
-      setTimeout(() => bot.setControlState('jump', false), 300);
+    if (!bot || !bot.entity || stepCount >= maxSteps) {
+      clearInterval(interval);
+      stopAllMovement();
+      return;
     }
-  }, Math.random() * 3000 + 2000);
-  
-  setTimeout(() => {
-    clearInterval(interval);
-    stopAllMovement();
-  }, Math.random() * 15000 + 10000);
-}
-
-function lookAroundBehavior() {
-  if (!bot || !bot.entity) return;
-  
-  const interval = setInterval(() => {
-    if (!bot || !bot.entity) return;
     
-    const yaw = Math.random() * Math.PI * 2;
-    const pitch = (Math.random() - 0.5) * 1.2;
-    bot.look(yaw, pitch, true);
-    
-    // Occasional inventory opening simulation
-    if (Math.random() < 0.1) {
-      bot.activateItem();
-    }
-  }, Math.random() * 2000 + 1000);
-  
-  setTimeout(() => clearInterval(interval), Math.random() * 8000 + 5000);
-}
-
-function digRandomBehavior() {
-  if (!bot || !bot.entity) return;
-  
-  // Look down and simulate digging
-  bot.look(bot.entity.yaw, Math.PI / 4, true);
-  
-  const interval = setInterval(() => {
-    if (!bot || !bot.entity) return;
-    
-    // Simulate digging motion
-    bot.activateItem();
-    
-    // Small movements while "digging"
-    if (Math.random() < 0.3) {
-      const smallYaw = bot.entity.yaw + (Math.random() - 0.5) * 0.3;
-      bot.look(smallYaw, Math.PI / 4, true);
-    }
-  }, Math.random() * 1000 + 500);
-  
-  setTimeout(() => {
-    clearInterval(interval);
-    bot.look(bot.entity.yaw, 0, true); // Look forward again
-  }, Math.random() * 8000 + 3000);
-}
-
-function buildSimpleBehavior() {
-  if (!bot || !bot.entity) return;
-  
-  const interval = setInterval(() => {
-    if (!bot || !bot.entity) return;
-    
-    // Look around as if placing blocks
-    const yaw = bot.entity.yaw + (Math.random() - 0.5) * 1.0;
-    const pitch = (Math.random() - 0.3) * 0.8;
-    bot.look(yaw, pitch, true);
-    
-    // Simulate placing blocks
-    bot.activateItem();
-    
-    // Small movements
-    if (Math.random() < 0.4) {
+    try {
       bot.setControlState('forward', true);
-      setTimeout(() => bot.setControlState('forward', false), 800);
+      setTimeout(() => {
+        if (bot) {
+          bot.setControlState('forward', false);
+          stepCount++;
+        }
+      }, Math.random() * 1000 + 500);
+    } catch (e) {
+      clearInterval(interval);
+      stopAllMovement();
     }
-  }, Math.random() * 1500 + 1000);
+  }, Math.random() * 2000 + 1500);
+}
+
+function pauseActivity() {
+  // Do nothing for a while - sometimes players just stand still
+  currentActivity = 'paused';
+  setTimeout(() => {
+    currentActivity = 'idle';
+  }, Math.random() * 30000 + 20000);
+}
+
+function safeChat(message) {
+  if (!bot || !bot.entity) return;
   
-  setTimeout(() => clearInterval(interval), Math.random() * 12000 + 8000);
+  try {
+    bot.chat(message);
+  } catch (e) {
+    console.log('Chat failed:', e.message);
+  }
 }
 
 function stopAllMovement() {
   if (!bot) return;
   
-  bot.setControlState('forward', false);
-  bot.setControlState('back', false);
-  bot.setControlState('left', false);
-  bot.setControlState('right', false);
-  bot.setControlState('jump', false);
-  bot.setControlState('sprint', false);
-  bot.setControlState('sneak', false);
+  try {
+    bot.setControlState('forward', false);
+    bot.setControlState('back', false);
+    bot.setControlState('left', false);
+    bot.setControlState('right', false);
+    bot.setControlState('jump', false);
+    bot.setControlState('sprint', false);
+    bot.setControlState('sneak', false);
+  } catch (e) {
+    // Ignore movement errors
+  }
 }
 
-function reconnect() {
-  if (reconnectTimeout) return;
+function cleanupAndReconnect() {
+  if (reconnectTimeout) return; // Already reconnecting
   
-  // Clear any existing timeouts
+  isReconnecting = true;
+  currentActivity = 'Reconnecting...';
+  
+  // Clear all intervals
+  if (movementInterval) {
+    clearInterval(movementInterval);
+    movementInterval = null;
+  }
+  if (lookInterval) {
+    clearInterval(lookInterval);
+    lookInterval = null;
+  }
+  if (chatInterval) {
+    clearInterval(chatInterval);
+    chatInterval = null;
+  }
   if (activityTimeout) {
     clearTimeout(activityTimeout);
     activityTimeout = null;
   }
   
+  // Stop all movement
+  stopAllMovement();
+  
+  // Reconnect with exponential backoff
+  const delay = Math.min(connectionAttempts * 2000, 30000) + Math.random() * 5000;
+  console.log(`⏳ Reconnecting in ${Math.floor(delay/1000)} seconds...`);
+  
   reconnectTimeout = setTimeout(() => {
     reconnectTimeout = null;
     createBot();
-  }, 10 * 1000);
+  }, delay);
 }
 
+// Start the bot
 createBot();
