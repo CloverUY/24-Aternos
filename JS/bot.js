@@ -1,4 +1,34 @@
 const mineflayer = require('mineflayer');
+const express = require('express');
+
+// === WEB SERVER FOR RENDER ===
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+  res.send(`
+    <h1>🤖 Minecraft AFK Bot Status</h1>
+    <p><strong>Bot Status:</strong> ${bot ? 'Online' : 'Offline'}</p>
+    <p><strong>Server:</strong> ${config.host}:${config.port}</p>
+    <p><strong>Username:</strong> ${config.username}</p>
+    <p><strong>Current Activity:</strong> ${currentActivity || 'Starting...'}</p>
+    <p><strong>Uptime:</strong> ${Math.floor(process.uptime())} seconds</p>
+  `);
+});
+
+app.get('/status', (req, res) => {
+  res.json({
+    botOnline: bot ? true : false,
+    server: `${config.host}:${config.port}`,
+    username: config.username,
+    currentActivity: currentActivity || 'Starting...',
+    uptime: Math.floor(process.uptime())
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`🌐 Web server running on port ${PORT}`);
+});
 
 let bot;
 let reconnectTimeout = null;
