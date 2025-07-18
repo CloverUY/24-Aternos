@@ -99,10 +99,13 @@ function createBot() {
       console.log("✅ Bot spawned successfully!");
       isReconnecting = false;
       
-      // Wait a bit before starting activities
+      // Wait longer before starting activities to avoid immediate kicks
       setTimeout(() => {
-        startImprovedBehavior();
-      }, 3000);
+        if (bot && bot.entity) {
+          console.log("🎮 Starting improved behaviors...");
+          startImprovedBehavior();
+        }
+      }, 10000); // Wait 10 seconds instead of 3
     });
     
     // === BETTER ERROR HANDLING ===
@@ -123,7 +126,15 @@ function createBot() {
     });
     
     bot.on('kicked', (reason) => {
-      console.warn(`⚠️ Bot was kicked: ${reason}`);
+      let kickReason = 'Unknown';
+      if (typeof reason === 'string') {
+        kickReason = reason;
+      } else if (reason && reason.text) {
+        kickReason = reason.text;
+      } else if (reason && reason.toString) {
+        kickReason = reason.toString();
+      }
+      console.warn(`⚠️ Bot was kicked: ${kickReason}`);
       cleanupAndReconnect();
     });
     
@@ -165,43 +176,54 @@ function startImprovedBehavior() {
     if (!bot || !bot.entity) return;
     
     stopAllMovement();
-    currentActivity = activities[Math.floor(Math.random() * activities.length)];
+    
+    // Start with safer activities
+    const safeActivities = ['idle_long', 'look_around', 'pause'];
+    currentActivity = safeActivities[Math.floor(Math.random() * safeActivities.length)];
     console.log(`🎯 Activity: ${currentActivity}`);
     
     executeImprovedActivity(currentActivity);
     
-    // Change activity every 1-4 minutes
-    activityTimeout = setTimeout(changeActivity, Math.random() * 180000 + 60000);
+    // Change activity every 2-5 minutes (longer intervals)
+    activityTimeout = setTimeout(changeActivity, Math.random() * 180000 + 120000);
   }
   
-  // Anti-AFK movements (very subtle)
-  movementInterval = setInterval(() => {
+  // Anti-AFK movements (very subtle and delayed)
+  setTimeout(() => {
     if (!bot || !bot.entity) return;
     
-    // Tiny mouse movements
-    if (Math.random() < 0.8) {
-      const currentYaw = bot.entity.yaw;
-      const currentPitch = bot.entity.pitch;
-      const smallYaw = currentYaw + (Math.random() - 0.5) * 0.2;
-      const smallPitch = currentPitch + (Math.random() - 0.5) * 0.1;
+    movementInterval = setInterval(() => {
+      if (!bot || !bot.entity) return;
       
-      try {
-        bot.look(smallYaw, smallPitch, true);
-      } catch (e) {
-        // Ignore look errors
+      // Tiny mouse movements
+      if (Math.random() < 0.6) { // Reduced frequency
+        const currentYaw = bot.entity.yaw;
+        const currentPitch = bot.entity.pitch;
+        const smallYaw = currentYaw + (Math.random() - 0.5) * 0.1; // Even smaller movements
+        const smallPitch = currentPitch + (Math.random() - 0.5) * 0.05;
+        
+        try {
+          bot.look(smallYaw, smallPitch, true);
+        } catch (e) {
+          // Ignore look errors
+        }
       }
-    }
-  }, Math.random() * 15000 + 15000); // 15-30 seconds
+    }, Math.random() * 20000 + 20000); // 20-40 seconds instead of 15-30
+  }, 30000); // Wait 30 seconds before starting movements
   
-  // Occasional chat (very rare)
-  chatInterval = setInterval(() => {
+  // Occasional chat (very rare and delayed)
+  setTimeout(() => {
     if (!bot || !bot.entity) return;
     
-    if (Math.random() < 0.1) { // 10% chance
-      const message = chatMessages[Math.floor(Math.random() * chatMessages.length)];
-      safeChat(message);
-    }
-  }, Math.random() * 300000 + 300000); // 5-10 minutes
+    chatInterval = setInterval(() => {
+      if (!bot || !bot.entity) return;
+      
+      if (Math.random() < 0.05) { // 5% chance instead of 10%
+        const message = chatMessages[Math.floor(Math.random() * chatMessages.length)];
+        safeChat(message);
+      }
+    }, Math.random() * 600000 + 600000); // 10-20 minutes instead of 5-10
+  }, 60000); // Wait 1 minute before starting chat
   
   changeActivity();
 }
